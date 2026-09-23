@@ -104,3 +104,11 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Local conversion workspace and generated build output
+/The_Climber/_import_temp/
+/The_Climber/Assets/_import_temp/
+/The_Climber/Assets/_import_temp.meta
+/The_Climber/Data/
+**/__pycache__/
+*.pyc
