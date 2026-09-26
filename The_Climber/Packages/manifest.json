@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.ncai.varco3d.bridge": "file:C:/Users/mbc/Downloads/VARCO3D-Bridge-for-Unity-v1.1.0/VARCO3D-Bridge-for-Unity",
+    "com.ncai.varco3d.bridge": "file:C:/Users/sub07/OneDrive/바탕 화면/VARCO3D-Bridge-for-Unity-v1.1.0/VARCO3D-Bridge-for-Unity",
     "com.unity.ai.navigation": "2.0.14",
     "com.unity.animation.rigging": "1.3.0",
     "com.unity.cloud.gltfast": "6.9.0",
