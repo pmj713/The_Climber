@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 public class PauseMenuController : MonoBehaviour
 {
     [SerializeField] private GameObject pausePanel;
+    [SerializeField] private GameObject settingsPanel;
     [SerializeField] private SkillCodexUI skillCodexUI;
     [SerializeField] private LevelUpSkillOffer levelUpOffer;
     [SerializeField] private TownController townController;
@@ -17,6 +18,7 @@ public class PauseMenuController : MonoBehaviour
     private void Awake()
     {
         if (pausePanel != null) pausePanel.SetActive(false);
+        if (settingsPanel != null) settingsPanel.SetActive(false);
     }
 
     private void Update()
@@ -31,7 +33,7 @@ public class PauseMenuController : MonoBehaviour
 
         // 보유 스킬 창/레벨업 선택/제단 업그레이드 패널이 열려있으면 그쪽이 ESC를 처리하도록 양보한다.
         if (skillCodexUI != null && skillCodexUI.IsOpen) return;
-        if (levelUpOffer != null && levelUpOffer.IsWaitingForChoice) return;
+        if (levelUpOffer != null && levelUpOffer.IsChoicePanelOpen) return;
         if (townController != null && townController.IsUpgradeMenuOpen) return;
 
         Pause();
@@ -55,6 +57,7 @@ public class PauseMenuController : MonoBehaviour
         isPaused = false;
         Time.timeScale = 1f;
         if (pausePanel != null) pausePanel.SetActive(false);
+        if (settingsPanel != null) settingsPanel.SetActive(false);
     }
 
     // 일시정지 메뉴의 "마을로 돌아가기" 버튼에서 호출.
@@ -62,6 +65,27 @@ public class PauseMenuController : MonoBehaviour
     {
         Resume();
         SceneManager.LoadScene("Village");
+    }
+
+    // 일시정지 메뉴의 "메인화면으로" 버튼에서 호출.
+    public void ReturnToMainMenu()
+    {
+        Resume();
+        SceneManager.LoadScene("MainMenu");
+    }
+
+    // 일시정지 메뉴의 "설정" 버튼에서 호출.
+    public void OpenSettings()
+    {
+        if (pausePanel != null) pausePanel.SetActive(false);
+        if (settingsPanel != null) settingsPanel.SetActive(true);
+    }
+
+    // 설정 패널의 "닫기" 버튼에서 호출.
+    public void CloseSettings()
+    {
+        if (settingsPanel != null) settingsPanel.SetActive(false);
+        if (pausePanel != null) pausePanel.SetActive(true);
     }
 
     public void QuitGame()

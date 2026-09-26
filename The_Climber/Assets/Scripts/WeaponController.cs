@@ -226,7 +226,7 @@ public class WeaponController : MonoBehaviour
             animator.SetFloat(BowAttackSpeedHash, Mathf.Max(0.01f, bowAttackSpeed));
         }
 
-        if (Input.GetMouseButtonDown(0) && Time.time >= lastAttackTime + EffectiveCooldown())
+        if (Input.GetKeyDown(KeyBindingManager.GetKey(RebindableAction.NormalAttack)) && Time.time >= lastAttackTime + EffectiveCooldown())
         {
             Attack();
         }

@@ -5,7 +5,8 @@ using UnityEngine;
 // 게임을 껐다 켜도 유지된다.
 public class PlayerGold : MonoBehaviour
 {
-    private const string SaveKey = "PlayerGold";
+    private const string SaveKeyBase = "PlayerGold";
+    private static string SaveKey => SaveSlotManager.Prefix + SaveKeyBase;
 
     public static PlayerGold Instance { get; private set; }
 

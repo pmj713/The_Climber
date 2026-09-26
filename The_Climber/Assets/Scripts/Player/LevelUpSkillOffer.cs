@@ -24,6 +24,10 @@ public class LevelUpSkillOffer : MonoBehaviour
     // 스킬 도감 창이 이 값을 확인해서, 레벨업 선택이 아직 안 끝났으면 시간을 다시 풀지 않는다.
     public bool IsWaitingForChoice => pendingOffers > 0;
 
+    // 일시정지 메뉴가 이 값을 확인해서, 선택 패널이 실제로 화면에 떠 있을 때만 ESC를 양보받는다.
+    // (G를 누르기 전, 즉 선택 대기 중이지만 패널이 아직 안 떠 있을 때는 ESC로 일시정지를 열 수 있어야 한다.)
+    public bool IsChoicePanelOpen => isPaused;
+
     private void Awake()
     {
         skillManager = GetComponent<PlayerSkillManager>();

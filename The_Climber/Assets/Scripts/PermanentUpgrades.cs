@@ -38,7 +38,7 @@ public class PermanentUpgrades : MonoBehaviour
         }
     }
 
-    private string SaveKeyFor(UpgradeType type) => $"Upgrade_{type}";
+    private string SaveKeyFor(UpgradeType type) => SaveSlotManager.Prefix + $"Upgrade_{type}";
 
     public UpgradeDefinition GetDefinition(UpgradeType type)
     {

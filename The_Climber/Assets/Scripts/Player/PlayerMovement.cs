@@ -14,7 +14,7 @@ public class PlayerMovement : MonoBehaviour
 
     [SerializeField] private float dodgeDistance = 4f;
     [SerializeField] private float dodgeDuration = 0.2f;
-    [SerializeField] private float dodgeCooldown = 0.8f;
+    [SerializeField] private float dodgeCooldown = 10f;
     [SerializeField] private float invulnerabilityDuration = 0.3f;
 
     private static readonly int IsMovingHash = Animator.StringToHash("IsMoving");
@@ -33,6 +33,13 @@ public class PlayerMovement : MonoBehaviour
 
     public bool IsInvulnerable { get; private set; }
     public Vector3 MoveDirection => moveInput;
+
+    public float GetDodgeCooldownRemaining()
+    {
+        return Mathf.Max(0f, (lastDodgeTime + dodgeCooldown) - Time.time);
+    }
+
+    public float DodgeCooldown => dodgeCooldown;
 
     private void Awake()
     {
@@ -59,6 +66,11 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
+        // 일시정지(스킬 선택/설정 등으로 Time.timeScale이 0이 된 상태)에는 조작을 완전히 무시한다.
+        // Update 자체는 timeScale과 무관하게 계속 돌기 때문에, 안 막아두면 이동은 멈춰도
+        // 마우스 방향으로 캐릭터가 계속 회전하는 등 입력이 새어 들어간다.
+        if (Time.timeScale == 0f) return;
+
         ReadMoveInput();
         UpdateAimPoint();
 
@@ -71,7 +83,7 @@ public class PlayerMovement : MonoBehaviour
         ApplyGravity();
         UpdateAnimator();
 
-        if (Input.GetKeyDown(KeyCode.Space) && !isDodging && Time.time >= lastDodgeTime + dodgeCooldown)
+        if (Input.GetKeyDown(KeyBindingManager.GetKey(RebindableAction.Dodge)) && !isDodging && Time.time >= lastDodgeTime + dodgeCooldown)
         {
             StartCoroutine(DoDodge());
         }
@@ -79,8 +91,13 @@ public class PlayerMovement : MonoBehaviour
 
     private void ReadMoveInput()
     {
-        float h = Input.GetAxisRaw("Horizontal");
-        float v = Input.GetAxisRaw("Vertical");
+        float h = 0f;
+        if (Input.GetKey(KeyBindingManager.GetKey(RebindableAction.MoveRight))) h += 1f;
+        if (Input.GetKey(KeyBindingManager.GetKey(RebindableAction.MoveLeft))) h -= 1f;
+
+        float v = 0f;
+        if (Input.GetKey(KeyBindingManager.GetKey(RebindableAction.MoveUp))) v += 1f;
+        if (Input.GetKey(KeyBindingManager.GetKey(RebindableAction.MoveDown))) v -= 1f;
 
         // 카메라 기준 방향으로 이동해야 화면 위쪽으로 W가 먹힘
         Vector3 camForward = mainCamera.transform.forward;

@@ -3,7 +3,8 @@ using UnityEngine.UI;
 
 public class SkillCodexUI : MonoBehaviour
 {
-    private static readonly string[] SlotNames = { "우클릭", "E", "Q" };
+    private static readonly RebindableAction[] SlotActions =
+        { RebindableAction.SkillRightClick, RebindableAction.SkillE, RebindableAction.SkillQ };
 
     [SerializeField] private SkillDatabase database;
     [SerializeField] private PlayerSkillManager skillManager;
@@ -155,7 +156,7 @@ public class SkillCodexUI : MonoBehaviour
             if (slotLabels[i] == null) continue;
 
             SkillDefinition equipped = slotManager.GetSlot(i);
-            string slotName = i < SlotNames.Length ? SlotNames[i] : $"슬롯{i + 1}";
+            string slotName = i < SlotActions.Length ? KeyBindingManager.GetKey(SlotActions[i]).ToString() : $"슬롯{i + 1}";
             slotLabels[i].text = equipped != null ? $"{slotName}\n{equipped.skillName}" : $"{slotName}\n(비어있음)";
 
             if (slotDragIcons != null && slotDragIcons[i] != null)

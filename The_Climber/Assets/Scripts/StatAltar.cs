@@ -36,6 +36,9 @@ public class StatAltar : MonoBehaviour
             if (hintText != null) hintText.gameObject.SetActive(inRange);
         }
 
+        // 일시정지/설정 등으로 게임이 멈춰있을 때는 상호작용 키 입력을 받지 않는다.
+        if (Time.timeScale == 0f) return;
+
         if (playerInRange && Input.GetKeyDown(interactKey) && townController != null)
         {
             townController.ToggleUpgradeMenu();
