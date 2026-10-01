@@ -12,8 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f9b27910a84a49042bfb50d52c4c6d4d, type: 3}
   m_Name: Power_Strike
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillName: 강타
-  description: 검 공격력이 증가합니다.
+  skillName: 공격력 강화
+  description: 캐릭터 공격력이 증가합니다.
   keywords:
-  - 2
-  weaponRequirement: 1
+  - 0
+  weaponRequirement: 0
+  prerequisiteKeyword: 0
+  prerequisiteLevel: 0
+  grantsElement: 0
+  elementSource: 0
+  customEffect: 14
+  customEffectValue: 0.15

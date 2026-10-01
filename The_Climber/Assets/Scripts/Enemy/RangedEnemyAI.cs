@@ -4,7 +4,7 @@ using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(EnemyHealth))]
-public class RangedEnemyAI : MonoBehaviour
+public class RangedEnemyAI : MonoBehaviour, IEnemyEmpowerable
 {
     // 근접 몬스터와 동일한 상태 흐름이지만 Attack에서 직접 타격 대신 투사체를 발사한다.
     private enum State { Idle, Chase, AttackPrepare, Attack, Cooldown }
@@ -21,21 +21,28 @@ public class RangedEnemyAI : MonoBehaviour
     [SerializeField] private Transform firePoint;
     [SerializeField] private Animator animator;
     [Tooltip("BowAttack 애니메이션이 시작된 뒤, 실제로 화살이 발사될 때까지의 지연 시간(초). 활을 쏘는 릴리즈 동작과 맞도록 조절")]
-    [SerializeField] private float fireDelay = 0f;
+    [SerializeField] private float fireDelay = 0.6f;
+    [Tooltip("공격 준비에 들어갈 때 활에서 번쩍이는 예고 이펙트 (선택)")]
+    [SerializeField] private GameObject attackWarningPrefab;
+    [Tooltip("화살을 놓는 순간 활 앞에서 터지는 이펙트 (선택)")]
+    [SerializeField] private GameObject releaseEffectPrefab;
 
     private static readonly int IsMovingHash = Animator.StringToHash("IsMoving");
     private static readonly int BowAttackHash = Animator.StringToHash("BowAttack");
 
     private NavMeshAgent agent;
     private EnemyHealth health;
+    private EnemyStatusEffects status;
     private Transform target;
     private State state;
     private float stateTimer;
+    private bool interruptedByFreeze;
 
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         health = GetComponent<EnemyHealth>();
+        status = GetComponent<EnemyStatusEffects>();
         if (animator == null) animator = GetComponentInChildren<Animator>();
         agent.speed = moveSpeed;
         agent.updateRotation = false;
@@ -57,11 +64,21 @@ public class RangedEnemyAI : MonoBehaviour
     {
         if (health.IsDead) return;
 
+        if (status != null && status.IsFrozen)
+        {
+            if (!interruptedByFreeze) InterruptForFreeze();
+            agent.isStopped = true;
+            return;
+        }
+        if (interruptedByFreeze) ResumeAfterFreeze();
+
         if (health.IsStunned)
         {
             agent.isStopped = true;
             return;
         }
+
+        agent.speed = moveSpeed * (status != null ? status.MoveSpeedMultiplier : 1f);
 
         if (target == null)
         {
@@ -145,12 +162,16 @@ public class RangedEnemyAI : MonoBehaviour
         state = State.AttackPrepare;
         stateTimer = attackPrepareTime;
         agent.isStopped = true;
-        // TODO: 조준선/경고 이펙트 트리거
+
+        if (attackWarningPrefab != null && firePoint != null)
+        {
+            Destroy(Instantiate(attackWarningPrefab, firePoint.position, firePoint.rotation, firePoint), 1f);
+        }
     }
 
     private void TickAttackPrepare()
     {
-        stateTimer -= Time.deltaTime;
+        stateTimer -= Time.deltaTime * (status != null ? status.MoveSpeedMultiplier : 1f);
         if (stateTimer <= 0f)
         {
             state = State.Attack;
@@ -193,15 +214,31 @@ public class RangedEnemyAI : MonoBehaviour
 
         EnemyProjectile projectile = Instantiate(projectilePrefab, origin, Quaternion.LookRotation(direction));
         projectile.Launch(direction, projectileSpeed, damage);
+
+        if (releaseEffectPrefab != null) Destroy(Instantiate(releaseEffectPrefab, origin, Quaternion.LookRotation(direction)), 1f);
     }
 
     private void TickCooldown()
     {
-        stateTimer -= Time.deltaTime;
+        stateTimer -= Time.deltaTime * (status != null ? status.MoveSpeedMultiplier : 1f);
         if (stateTimer <= 0f)
         {
             state = (target != null && DistanceToTarget() <= detectRange) ? State.Chase : State.Idle;
         }
+    }
+
+    // 빙결되면 시위를 당기던 사격(지연 발사)을 취소한다.
+    private void InterruptForFreeze()
+    {
+        interruptedByFreeze = true;
+        StopAllCoroutines();
+        state = State.Idle;
+    }
+
+    private void ResumeAfterFreeze()
+    {
+        interruptedByFreeze = false;
+        EnemyFreezeInterrupt.ReturnToIdle(animator, BowAttackHash);
     }
 
     private void HandleDeath()
@@ -209,6 +246,13 @@ public class RangedEnemyAI : MonoBehaviour
         agent.isStopped = true;
         enabled = false;
         Destroy(gameObject, 0f);
+    }
+
+    // 제단의 '적 이동속도' 강화. 돌진 같은 패턴 속도는 그대로 두고 평소 이동 속도만 올린다.
+    public void ApplyMoveSpeedMultiplier(float multiplier)
+    {
+        moveSpeed *= multiplier;
+        if (agent != null) agent.speed = moveSpeed;
     }
 
     public void ApplyDamageMultiplier(float multiplier)

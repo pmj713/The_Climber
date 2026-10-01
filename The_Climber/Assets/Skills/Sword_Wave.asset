@@ -14,7 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
   skillName: 검기
   description: 검을 휘둘러 전방으로 베기 에너지를 날려 지나가는 적을 모두 공격합니다.
-  keywords: []
+  keywords:
+  - 1
   weaponRequirement: 1
   activeType: 3
   cooldown: 7
+  oneTimeOnly: 1

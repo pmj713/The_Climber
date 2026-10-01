@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f9b27910a84a49042bfb50d52c4c6d4d, type: 3}
+  m_Name: SwordWave_Size
+  m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
+  skillName: 검기 크기 증가
+  description: 검기의 크기(판정 범위)가 커집니다.
+  keywords:
+  - 1
+  weaponRequirement: 1
+  prerequisiteKeyword: 0
+  prerequisiteLevel: 0
+  grantsElement: 0
+  elementSource: 0
+  customEffect: 16
+  customEffectValue: 0.15

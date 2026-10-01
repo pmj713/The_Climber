@@ -36,6 +36,7 @@ public class PlayerActiveSkillSlots : MonoBehaviour
     public void Equip(int index, SkillDefinition skill)
     {
         if (index < 0 || index >= slots.Length) return;
+        if (skill != null && skill.activeType == ActiveSkillType.None) return; // 액티브 스킬만 장착 가능
 
         // 같은 스킬이 다른 슬롯에 이미 장착되어 있으면 그쪽은 비워서 중복 장착을 막는다
         if (skill != null)

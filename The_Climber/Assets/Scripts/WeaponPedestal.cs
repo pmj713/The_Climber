@@ -14,6 +14,10 @@ public class WeaponPedestal : MonoBehaviour
     [SerializeField] private KeyCode interactKey = KeyCode.E;
     [SerializeField] private Text hintText; // "E: 장착" 같은 안내 문구, 없어도 동작함
 
+    [Tooltip("상호작용 거리의 기준점. 비워두면 이 오브젝트 위치를 사용한다")]
+    [SerializeField] private Transform interactionCenter;
+
+    private Vector3 InteractionPosition => interactionCenter != null ? interactionCenter.position : transform.position;
     private bool playerInRange;
 
     private void Start()
@@ -25,7 +29,7 @@ public class WeaponPedestal : MonoBehaviour
     {
         if (weaponController == null) return;
 
-        bool inRange = Vector3.Distance(transform.position, weaponController.transform.position) <= interactDistance;
+        bool inRange = Vector3.Distance(InteractionPosition, weaponController.transform.position) <= interactDistance;
         if (inRange != playerInRange)
         {
             playerInRange = inRange;
@@ -53,6 +57,6 @@ public class WeaponPedestal : MonoBehaviour
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 1f, 0f, 0.6f);
-        Gizmos.DrawWireSphere(transform.position, interactDistance);
+        Gizmos.DrawWireSphere(InteractionPosition, interactDistance);
     }
 }

@@ -5,7 +5,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 {
     public static PlayerHealth Instance { get; private set; }
 
-    [SerializeField] private int maxHealth = 100; // 영구 업그레이드 적용 전 기본값
+    [SerializeField] private int maxHealth = 100;
 
     private int effectiveMaxHealth;
     private int currentHealth;
@@ -27,17 +27,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     private void Start()
     {
-        ApplyPermanentUpgrades();
-    }
-
-    // 영구 업그레이드(생명력 %)를 기본값에 다시 적용해서 effectiveMaxHealth를 갱신한다.
-    // 플레이어는 씬을 넘어가도 파괴되지 않아서 Start()는 한 번만 실행되므로, 제단에서
-    // 구매하거나 새 런을 시작할 때 TownController가 이 메서드를 직접 호출해줘야 한다.
-    public void ApplyPermanentUpgrades()
-    {
-        float bonus = PermanentUpgrades.Instance != null ? PermanentUpgrades.Instance.GetBonusPercent(UpgradeType.MaxHealth) : 0f;
-        effectiveMaxHealth = Mathf.RoundToInt(maxHealth * (1f + bonus));
-        currentHealth = effectiveMaxHealth;
+        // 체력바 UI가 첫 값을 받을 수 있도록 한 번 알려준다.
         OnHealthChanged?.Invoke(currentHealth, effectiveMaxHealth);
     }
 

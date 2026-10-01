@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// 마을의 능력치 제단. 콜라이더/트리거에 기대지 않고 플레이어와의 거리로만 판정한다
+// 마을의 적 강화 제단. 콜라이더/트리거에 기대지 않고 플레이어와의 거리로만 판정한다
 // (제단 3D 모델의 콜라이더는 물리적으로 막는 용도로 그대로 둬야 해서 건드리지 않는다).
-// 범위 안에서 상호작용 키를 누르면 영구 업그레이드 구매 패널을 열고 닫는다.
+// 범위 안에서 상호작용 키를 누르면 '적 강화' 단계 조절 패널을 열고 닫는다.
 public class StatAltar : MonoBehaviour
 {
     [SerializeField] private Transform player; // 비워두면 PlayerHealth.Instance에서 자동으로 찾음
@@ -11,7 +11,7 @@ public class StatAltar : MonoBehaviour
     [Tooltip("플레이어가 이 거리 안으로 들어오면 상호작용 힌트가 뜨고 키 입력을 받는다")]
     [SerializeField] private float interactDistance = 3f;
     [SerializeField] private KeyCode interactKey = KeyCode.E;
-    [SerializeField] private Text hintText; // "E: 능력치 강화" 같은 안내 문구, 없어도 동작함
+    [SerializeField] private Text hintText; // "E: 적 강화" 같은 안내 문구, 없어도 동작함
 
     private bool playerInRange;
 

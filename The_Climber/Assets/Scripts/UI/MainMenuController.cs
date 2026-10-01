@@ -15,6 +15,7 @@ public class MainMenuController : MonoBehaviour
     {
         // 일시정지 중에 게임을 종료했다가 다시 들어온 경우를 대비해 항상 정상 속도로 시작한다.
         Time.timeScale = 1f;
+        SaveSlotManager.PurgeLegacyData(); // 골드/플레이어 영구 강화는 제거된 기능이라 남은 저장 값을 지운다
     }
 
     private void Start()
@@ -68,9 +69,8 @@ public class MainMenuController : MonoBehaviour
 
             if (SaveSlotManager.SlotExists(i))
             {
-                int gold = SaveSlotManager.GetGold(i);
-                int upgradeLevels = SaveSlotManager.GetTotalUpgradeLevels(i);
-                slotLabels[i].text = $"세이브 {i + 1}\n골드 {gold}\n강화 합계 {upgradeLevels}단계";
+                int boostLevels = SaveSlotManager.GetTotalEnemyBoostLevels(i);
+                slotLabels[i].text = $"세이브 {i + 1}\n적 강화 합계 {boostLevels}단계";
             }
             else
             {

@@ -83,14 +83,9 @@ public class RoomEncounter : MonoBehaviour
             health.OnDeath += HandleEnemyDeath;
         }
 
-        if (instance.TryGetComponent<MeleeEnemyAI>(out var melee))
+        foreach (IEnemyEmpowerable ai in instance.GetComponents<IEnemyEmpowerable>())
         {
-            melee.ApplyDamageMultiplier(damageMultiplier);
-        }
-
-        if (instance.TryGetComponent<RangedEnemyAI>(out var ranged))
-        {
-            ranged.ApplyDamageMultiplier(damageMultiplier);
+            ai.ApplyDamageMultiplier(damageMultiplier);
         }
     }
 

@@ -6,7 +6,7 @@ public class PlayerMovement : MonoBehaviour
 {
     public static PlayerMovement Instance { get; private set; }
 
-    [SerializeField] private float moveSpeed = 6f; // 영구 업그레이드 적용 전 기본값
+    [SerializeField] private float moveSpeed = 6f;
     [SerializeField] private float rotationSpeed = 15f;
     [SerializeField] private Camera mainCamera;
     [SerializeField] private Animator animator;
@@ -48,20 +48,7 @@ public class PlayerMovement : MonoBehaviour
         if (mainCamera == null) mainCamera = Camera.main;
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (animator != null) modelTransform = animator.transform;
-    }
-
-    private void Start()
-    {
-        ApplyPermanentUpgrades();
-    }
-
-    // 영구 업그레이드(이동속도 %)를 기본값에 다시 적용한다. 플레이어는 씬을 넘어가도
-    // 파괴되지 않아서 Start()는 한 번만 실행되므로, 제단에서 구매하거나 새 런을 시작할 때
-    // TownController가 이 메서드를 직접 호출해줘야 한다.
-    public void ApplyPermanentUpgrades()
-    {
-        float bonus = PermanentUpgrades.Instance != null ? PermanentUpgrades.Instance.GetBonusPercent(UpgradeType.MoveSpeed) : 0f;
-        effectiveMoveSpeed = moveSpeed * (1f + bonus);
+        effectiveMoveSpeed = moveSpeed;
     }
 
     private void Update()
@@ -134,6 +121,31 @@ public class PlayerMovement : MonoBehaviour
     {
         speedMultiplier = multiplier;
         speedBoostEndTime = Time.time + duration;
+    }
+
+    // 엘리트 몬스터의 강타 등 넉백 효과용. 회피 중에는 무시한다.
+    public void ApplyKnockback(Vector3 velocity, float duration = 0.25f)
+    {
+        if (isDodging) return;
+        StartCoroutine(KnockbackRoutine(velocity, duration));
+    }
+
+    // 보스 광역 강타 등 "경직" 효과용. 공격 중 이동을 묶어두는 것과 같은 잠금을 재사용한다.
+    public void ApplyStun(float duration)
+    {
+        attackRootEndTime = Mathf.Max(attackRootEndTime, Time.time + duration);
+    }
+
+    private IEnumerator KnockbackRoutine(Vector3 velocity, float duration)
+    {
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            float remaining = 1f - elapsed / duration;
+            controller.Move(velocity * remaining * Time.deltaTime);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
     }
 
     // 공격 중에는 제자리에서 휘두르도록 이동을 잠깐 묶어둔다 (검/활 공용)

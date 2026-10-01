@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Arrow_Rain
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
   skillName: 화살 비
-  description: 넓은 범위에 화살을 퍼붓습니다.
+  description: 지정한 범위에 화살을 퍼부어, 지속시간 동안 계속 피해를 줍니다.
   keywords:
   - 4
   weaponRequirement: 2
   activeType: 1
   cooldown: 8
+  oneTimeOnly: 1

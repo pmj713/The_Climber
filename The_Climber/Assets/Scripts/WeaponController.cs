@@ -24,6 +24,8 @@ public class WeaponController : MonoBehaviour
     [SerializeField] private float bowAttackSpeed = 2.875f;
     [Tooltip("활을 당기는 동작과 실제 화살 발사 사이의 딜레이(초). 0이면 클릭 즉시 발사")]
     [SerializeField] private float bowReleaseDelay = 0.15f;
+    [Tooltip("검 끝에 붙은 궤적. 검 스윙 동작 중에만 그린다 (선택)")]
+    [SerializeField] private TrailRenderer swordTrail;
 
     [Header("무기 장착 위치 (모델 뼈 기준)")]
     [SerializeField] private Vector3 swordHandPosition = new Vector3(0f, 0.035f, 0f);
@@ -81,6 +83,15 @@ public class WeaponController : MonoBehaviour
         UpdateWeaponPose();
         UpdateSwordSupportHand();
         UpdateSwordBladeLength();
+        UpdateSwordTrail();
+    }
+
+    private void UpdateSwordTrail()
+    {
+        if (swordTrail == null) return;
+        bool swinging = currentWeapon is SwordWeapon && Time.time < attackVisualEndTime;
+        if (swinging && !swordTrail.emitting) swordTrail.Clear(); // 칼집에서 손으로 옮겨진 순간의 선이 남지 않게
+        swordTrail.emitting = swinging;
     }
 
     private void InitializeWeaponGrips()
@@ -236,8 +247,10 @@ public class WeaponController : MonoBehaviour
     {
         if (Time.time >= hasteEndTime) hasteMultiplier = 1f;
 
-        int level = skillManager != null ? skillManager.GetKeywordLevel(KeywordType.AttackSpeed) : 0;
-        return (attackCooldown / (1f + attackSpeedPerLevel * level)) * hasteMultiplier;
+        // 일반공격 키워드는 레벨이 오를 때마다 데미지/공격속도가 번갈아 증가한다 (짝수 레벨 = 공격속도).
+        int basicAttackLevel = skillManager != null ? skillManager.GetKeywordLevel(KeywordType.BasicAttack) : 0;
+        int speedStacks = basicAttackLevel / 2;
+        return (attackCooldown / (1f + attackSpeedPerLevel * speedStacks)) * hasteMultiplier;
     }
 
     // 헤이스트 같은 일시적 버프용. cooldownMultiplier가 1보다 작으면 그만큼 공격 쿨타임이 짧아진다.
@@ -259,6 +272,8 @@ public class WeaponController : MonoBehaviour
             : BowShotBaseDuration / Mathf.Max(0.01f, bowAttackSpeed);
         attackVisualEndTime = Time.time + rootDuration;
         UpdateWeaponPose();
+        if (isSword && swordTrail != null && currentWeapon is SwordWeapon sword)
+            swordTrail.colorGradient = EffectTint.TrailGradient(EffectTint.ForElement(sword.CurrentElement));
 
         if (movement != null)
         {

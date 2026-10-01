@@ -15,7 +15,7 @@ MonoBehaviour:
   skillName: 헤이스트
   description: 공격속도와 버프 효과가 증가합니다.
   keywords:
-  - 3
   - 5
   activeType: 2
   cooldown: 12
+  oneTimeOnly: 1

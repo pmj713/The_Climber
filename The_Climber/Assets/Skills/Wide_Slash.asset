@@ -12,8 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f9b27910a84a49042bfb50d52c4c6d4d, type: 3}
   m_Name: Wide_Slash
   m_EditorClassIdentifier: Assembly-CSharp::SkillDefinition
-  skillName: 광역 베기
-  description: 검의 타격 범위가 넓어집니다.
+  skillName: 검 공격범위 증가
+  description: 검의 공격 범위(사거리)가 늘어납니다.
   keywords:
-  - 6
+  - 0
   weaponRequirement: 1
+  prerequisiteKeyword: 0
+  prerequisiteLevel: 0
+  grantsElement: 0
+  elementSource: 0
+  customEffect: 15
+  customEffectValue: 0.3

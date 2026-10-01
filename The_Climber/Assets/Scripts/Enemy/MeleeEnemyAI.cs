@@ -3,7 +3,7 @@ using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(EnemyHealth))]
-public class MeleeEnemyAI : MonoBehaviour
+public class MeleeEnemyAI : MonoBehaviour, IEnemyEmpowerable
 {
     // 기획 문서 상태: Idle -> Detect -> Chase -> Attack Prepare -> Attack -> Cooldown -> Chase
     // Detect는 별도 상태 대신 Idle/Chase 안의 거리 판정으로 처리 (초기 버전은 단순하게)
@@ -20,20 +20,25 @@ public class MeleeEnemyAI : MonoBehaviour
     [SerializeField] private EnemyMeleeWeaponHitbox weaponHitbox;
     [Tooltip("공격 애니메이션이 시작된 뒤 무기 판정이 켜져 있는 시간(초)")]
     [SerializeField] private float weaponActiveDuration = 0.3f;
+    [Tooltip("공격 준비에 들어갈 때 무기에서 번쩍이는 예고 이펙트 (선택)")]
+    [SerializeField] private GameObject attackWarningPrefab;
 
     private static readonly int IsMovingHash = Animator.StringToHash("IsMoving");
     private static readonly int AttackHash = Animator.StringToHash("Attack");
 
     private NavMeshAgent agent;
     private EnemyHealth health;
+    private EnemyStatusEffects status;
     private Transform target;
     private State state;
     private float stateTimer;
+    private bool interruptedByFreeze;
 
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         health = GetComponent<EnemyHealth>();
+        status = GetComponent<EnemyStatusEffects>();
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (weaponHitbox == null) weaponHitbox = GetComponentInChildren<EnemyMeleeWeaponHitbox>(true);
         agent.speed = moveSpeed;
@@ -57,11 +62,21 @@ public class MeleeEnemyAI : MonoBehaviour
     {
         if (health.IsDead) return;
 
+        if (status != null && status.IsFrozen)
+        {
+            if (!interruptedByFreeze) InterruptForFreeze();
+            agent.isStopped = true;
+            return;
+        }
+        if (interruptedByFreeze) ResumeAfterFreeze();
+
         if (health.IsStunned)
         {
             agent.isStopped = true;
             return;
         }
+
+        agent.speed = moveSpeed * (status != null ? status.MoveSpeedMultiplier : 1f);
 
         if (target == null)
         {
@@ -143,12 +158,17 @@ public class MeleeEnemyAI : MonoBehaviour
         state = State.AttackPrepare;
         stateTimer = attackPrepareTime;
         agent.isStopped = true;
-        // TODO: 공격 예고(경고 표시) 이펙트/애니메이션 트리거
+
+        if (attackWarningPrefab != null && weaponHitbox != null)
+        {
+            Transform weapon = weaponHitbox.transform;
+            Destroy(Instantiate(attackWarningPrefab, weapon.position, weapon.rotation, weapon), 1f);
+        }
     }
 
     private void TickAttackPrepare()
     {
-        stateTimer -= Time.deltaTime;
+        stateTimer -= Time.deltaTime * (status != null ? status.MoveSpeedMultiplier : 1f);
         if (stateTimer <= 0f)
         {
             state = State.Attack;
@@ -174,11 +194,26 @@ public class MeleeEnemyAI : MonoBehaviour
 
     private void TickCooldown()
     {
-        stateTimer -= Time.deltaTime;
+        stateTimer -= Time.deltaTime * (status != null ? status.MoveSpeedMultiplier : 1f);
         if (stateTimer <= 0f)
         {
             state = (target != null && DistanceToTarget() <= detectRange) ? State.Chase : State.Idle;
         }
+    }
+
+    // 빙결되면 휘두르던 공격(지연 판정)을 취소한다.
+    private void InterruptForFreeze()
+    {
+        interruptedByFreeze = true;
+        CancelInvoke(nameof(ActivateWeaponHitbox));
+        if (weaponHitbox != null) weaponHitbox.Deactivate();
+        state = State.Idle;
+    }
+
+    private void ResumeAfterFreeze()
+    {
+        interruptedByFreeze = false;
+        EnemyFreezeInterrupt.ReturnToIdle(animator, AttackHash);
     }
 
     private void HandleDeath()
@@ -187,6 +222,13 @@ public class MeleeEnemyAI : MonoBehaviour
         enabled = false;
         // TODO: 사망 애니메이션/이펙트 재생 후 제거
         Destroy(gameObject, 0f);
+    }
+
+    // 제단의 '적 이동속도' 강화. 돌진 같은 패턴 속도는 그대로 두고 평소 이동 속도만 올린다.
+    public void ApplyMoveSpeedMultiplier(float multiplier)
+    {
+        moveSpeed *= multiplier;
+        if (agent != null) agent.speed = moveSpeed;
     }
 
     public void ApplyDamageMultiplier(float multiplier)

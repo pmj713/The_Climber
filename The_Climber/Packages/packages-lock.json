@@ -1,9 +1,9 @@
 {
   "dependencies": {
     "com.ncai.varco3d.bridge": {
-      "version": "file:C:/Users/sub07/OneDrive/바탕 화면/VARCO3D-Bridge-for-Unity-v1.1.0/VARCO3D-Bridge-for-Unity",
+      "version": "file:com.ncai.varco3d.bridge",
       "depth": 0,
-      "source": "local",
+      "source": "embedded",
       "dependencies": {
         "com.unity.importer.usd": "1.0.0-pre.2"
       }

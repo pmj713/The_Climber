@@ -8,6 +8,7 @@ public class EnemyProjectile : MonoBehaviour
     [SerializeField] private LayerMask playerMask;
     [SerializeField] private LayerMask obstacleMask;
     [SerializeField] private LayerMask ignoreMask;
+    [SerializeField] private GameObject impactEffectPrefab; // 비워두면 맞아도 이펙트 없음
 
     private Vector3 direction;
     private Vector3 startPosition;
@@ -46,6 +47,7 @@ public class EnemyProjectile : MonoBehaviour
             {
                 damageable.TakeDamage(damage);
             }
+            SpawnImpact();
             Destroy(gameObject);
             return;
         }
@@ -53,7 +55,14 @@ public class EnemyProjectile : MonoBehaviour
         // 대미지 대상은 아니지만 벽 같은 장애물이면 여기서 막힌다
         if ((otherLayerBit & obstacleMask) != 0)
         {
+            SpawnImpact();
             Destroy(gameObject);
         }
+    }
+
+    private void SpawnImpact()
+    {
+        if (impactEffectPrefab == null) return;
+        Destroy(Instantiate(impactEffectPrefab, transform.position, Quaternion.LookRotation(-direction)), 2f);
     }
 }

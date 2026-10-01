@@ -4,9 +4,11 @@ public class BowWeapon : MonoBehaviour, IWeapon
 {
     [SerializeField] private Projectile projectilePrefab;
     [SerializeField] private float projectileSpeed = 15f;
-    [SerializeField] private int damage = 8; // 영구 업그레이드 적용 전 기본값
+    [SerializeField] private int damage = 8;
     [SerializeField] private float multiShotSpreadAngle = 10f;
     [SerializeField] private float powerDamagePerLevel = 0.15f;
+    [Tooltip("화살을 놓는 순간 활 앞에서 터지는 이펙트 (선택)")]
+    [SerializeField] private GameObject releaseEffectPrefab;
 
     private PlayerSkillManager skillManager;
     private int effectiveDamage;
@@ -14,20 +16,7 @@ public class BowWeapon : MonoBehaviour, IWeapon
     private void Awake()
     {
         skillManager = GetComponent<PlayerSkillManager>();
-    }
-
-    private void Start()
-    {
-        ApplyPermanentUpgrades();
-    }
-
-    // 영구 업그레이드(공격력 %)를 기본값에 다시 적용한다. 플레이어는 씬을 넘어가도
-    // 파괴되지 않아서 Start()는 한 번만 실행되므로, 제단에서 구매하거나 새 런을 시작할 때
-    // TownController가 이 메서드를 직접 호출해줘야 한다.
-    public void ApplyPermanentUpgrades()
-    {
-        float bonus = PermanentUpgrades.Instance != null ? PermanentUpgrades.Instance.GetBonusPercent(UpgradeType.AttackPower) : 0f;
-        effectiveDamage = Mathf.RoundToInt(damage * (1f + bonus));
+        effectiveDamage = damage;
     }
 
     public void TryAttack(Vector3 origin, Vector3 direction)
@@ -38,16 +27,31 @@ public class BowWeapon : MonoBehaviour, IWeapon
             return;
         }
 
-        int projectileCount = 1 + GetLevel(KeywordType.Projectile);
-        int pierceCount = GetLevel(KeywordType.Pierce);
-        int finalDamage = Mathf.RoundToInt(effectiveDamage * (1f + powerDamagePerLevel * GetLevel(KeywordType.Power)));
+        // 일반공격 키워드는 레벨이 오를 때마다 데미지/공격속도가 번갈아 증가한다 (홀수 레벨 = 데미지).
+        int basicAttackLevel = GetLevel(KeywordType.BasicAttack);
+        int powerStacks = (basicAttackLevel + 1) / 2;
+        int finalDamage = Mathf.RoundToInt(effectiveDamage * (1f + powerDamagePerLevel * powerStacks));
+
+        int projectileLevel = GetLevel(KeywordType.Projectile);
+        int projectileCount = 1 + projectileLevel;
+        int pierceCount = projectileLevel;
+        ElementType element = ResolveElement();
+        EffectTint.Spawn(releaseEffectPrefab, origin, Quaternion.LookRotation(direction), EffectTint.ForElement(element), 1f);
 
         for (int i = 0; i < projectileCount; i++)
         {
             Vector3 shotDirection = ApplySpread(direction, i, projectileCount);
             Projectile projectile = Instantiate(projectilePrefab, origin, Quaternion.LookRotation(shotDirection));
-            projectile.Launch(shotDirection, projectileSpeed, finalDamage, pierceCount);
+            projectile.Launch(shotDirection, projectileSpeed, finalDamage, pierceCount, element, 1);
         }
+    }
+
+    private ElementType ResolveElement()
+    {
+        if (skillManager == null) return ElementType.None;
+        if (skillManager.HasElement(ElementSource.BasicAttack, ElementType.Freeze)) return ElementType.Freeze;
+        if (skillManager.HasElement(ElementSource.BasicAttack, ElementType.Burn)) return ElementType.Burn;
+        return ElementType.None;
     }
 
     private int GetLevel(KeywordType keyword)

@@ -155,7 +155,7 @@ public class LevelUpSkillOffer : MonoBehaviour
         List<SkillDefinition> available = new List<SkillDefinition>();
         foreach (SkillDefinition skill in skillPool)
         {
-            if (skill != null && IsUsableWithCurrentWeapon(skill)) available.Add(skill);
+            if (skill != null && IsUsableWithCurrentWeapon(skill) && IsEligible(skill)) available.Add(skill);
         }
 
         if (available.Count == 0)
@@ -191,6 +191,59 @@ public class LevelUpSkillOffer : MonoBehaviour
         return skill.weaponRequirement == WeaponRequirement.Sword
             ? weaponController.IsSwordEquipped
             : weaponController.IsBowEquipped;
+    }
+
+    // 1회 한정 스킬 중복 방지 / 선행 키워드 레벨 조건 / 빙결·화상 상호 배제를 확인한다.
+    private bool IsEligible(SkillDefinition skill)
+    {
+        if (skill.oneTimeOnly && skillManager.HasAcquired(skill)) return false;
+
+        if (skill.prerequisiteLevel > 0 &&
+            skillManager.GetKeywordLevel(skill.prerequisiteKeyword) < skill.prerequisiteLevel) return false;
+
+        if (skill.grantsElement != ElementType.None &&
+            skillManager.LockedElement != ElementType.None &&
+            skill.grantsElement != skillManager.LockedElement) return false;
+
+        // 속성부여 스킬 자체가 아닌, 빙결/화상 키워드에 속한 "성장" 스킬은 해당 속성을
+        // 먼저 선택하지 않은 이상 나오면 안 된다 (안 그러면 아직 못 거는 속성의 스택 증가 등이 뜬다).
+        if (skill.grantsElement == ElementType.None)
+        {
+            if (HasKeyword(skill, KeywordType.Freeze) && skillManager.LockedElement != ElementType.Freeze) return false;
+            if (HasKeyword(skill, KeywordType.Burn) && skillManager.LockedElement != ElementType.Burn) return false;
+        }
+
+        // 검기/힐윈드/화살비/부채살 전용 속성부여는 그 액티브 스킬 자체를 먼저 배워야 나온다
+        // (예: 화살비를 아직 안 배웠으면 "화살비-속성부여"는 뜨지 않는다).
+        if (skill.grantsElement != ElementType.None)
+        {
+            ActiveSkillType requiredActive = ToRequiredActiveType(skill.elementSource);
+            if (requiredActive != ActiveSkillType.None && !skillManager.HasAcquiredActiveType(requiredActive)) return false;
+        }
+
+        return true;
+    }
+
+    private static ActiveSkillType ToRequiredActiveType(ElementSource source)
+    {
+        switch (source)
+        {
+            case ElementSource.SwordWave: return ActiveSkillType.SwordWave;
+            case ElementSource.Whirlwind: return ActiveSkillType.Whirlwind;
+            case ElementSource.ArrowRain: return ActiveSkillType.ArrowRain;
+            case ElementSource.FanShot: return ActiveSkillType.FanShot;
+            default: return ActiveSkillType.None;
+        }
+    }
+
+    private static bool HasKeyword(SkillDefinition skill, KeywordType keyword)
+    {
+        if (skill.keywords == null) return false;
+        foreach (KeywordType k in skill.keywords)
+        {
+            if (k == keyword) return true;
+        }
+        return false;
     }
 
     private void ChooseSkill(int index)
