@@ -112,3 +112,7 @@ InitTestScene*.unity*
 /The_Climber/Data/
 **/__pycache__/
 *.pyc
+
+# 외부 에셋 팩 (라이선스상 저장소에 올리지 않음)
+/The_Climber/Assets/EEJANAI_Team/
+/The_Climber/Assets/EEJANAI_Team.meta
