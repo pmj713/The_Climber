@@ -17,7 +17,8 @@ using UnityEngine;
 // 기존 RoomEncounter(몬스터 설정 포함)는 지우지 않고 새 방 가운데로 옮겨서 재사용한다.
 public static class DungeonChainBuilder
 {
-    private const float Cell = 2f;          // 격자 한 칸(m)
+    public const float CellSize = 2f;       // 격자 한 칸(m)
+    private const float Cell = CellSize;
     private const float WallHeight = 2.5f;
     private const string MaterialPath = "Assets/Materials/DungeonDarkBrick.mat";
     private const string TopMaterialPath = "Assets/Materials/DungeonDarkBrickTop.mat"; // 벽 윗면: 바닥과 구분되게 더 어둡게
@@ -31,12 +32,22 @@ public static class DungeonChainBuilder
         public int corridorLength; // 방 사이 복도 길이(칸)
         public int roomWidth;      // 방 가로(칸, 짝수 권장)
         public int roomDepth;      // 방 세로(칸)
+        public bool endCorridor;   // 마지막 방 뒤에 막다른 복도를 붙일지
+        public int exitWidth;      // 마지막 방 뒤 '출구 공간'(다음 층 문을 두는 곳) 폭(칸, 짝수 권장)
+        public int exitDepth;      // 출구 공간 깊이(칸). 0이면 출구 공간 없음 (있으면 endCorridor보다 우선)
     }
 
     public static readonly Layout Floor1Layout = new Layout
     {
         // 벽 두께가 1칸이라 방 사이 복도는 앞뒤 방 벽 2칸을 빼고 남는 만큼 '복도'로 보인다 (4칸 -> 2칸이 복도)
-        roomCount = 5, corridorWidth = 2, corridorLength = 4, roomWidth = 8, roomDepth = 5
+        roomCount = 5, corridorWidth = 2, corridorLength = 4, roomWidth = 8, roomDepth = 5, endCorridor = true
+    };
+
+    // 시작 복도 하나 + 큰 방 하나 (40m x 40m) + 다음 층 문을 두는 출구 공간 (16m x 12m)
+    public static readonly Layout BigRoomLayout = new Layout
+    {
+        roomCount = 1, corridorWidth = 2, corridorLength = 4, roomWidth = 20, roomDepth = 20, endCorridor = false,
+        exitWidth = 8, exitDepth = 6
     };
 
     [MenuItem("Tools/Floor1 던전 다시 만들기 (복도-방 일자 연결)")]
@@ -48,6 +59,15 @@ public static class DungeonChainBuilder
         Debug.Log(Rebuild(Floor1Layout));
     }
 
+    [MenuItem("Tools/Floor1 던전 다시 만들기 (큰 방 하나)")]
+    private static void BuildBigRoomFromMenu()
+    {
+        if (!EditorUtility.DisplayDialog("던전 다시 만들기",
+                "현재 열린 씬의 Floor1_Dungeon과 바닥 Plane을 지우고 시작 복도 + 큰 방 하나로 다시 만듭니다. 기존 방들의 몬스터 수는 큰 방 하나로 합쳐집니다. 계속할까요?", "만들기", "취소"))
+            return;
+        Debug.Log(Rebuild(BigRoomLayout));
+    }
+
     public static string Rebuild(Layout layout)
     {
         var log = new System.Text.StringBuilder();
@@ -56,6 +76,7 @@ public static class DungeonChainBuilder
         // ---------- 1) 칸 배치 ----------
         var floor = new HashSet<Vector2Int>();
         var rooms = new List<RectInt>();
+        RectInt? exitRect = null;
         int z = 0;
         AddRect(floor, -layout.corridorWidth / 2, z, layout.corridorWidth, layout.corridorLength); // 시작 복도
         z += layout.corridorLength;
@@ -65,6 +86,17 @@ public static class DungeonChainBuilder
             AddRect(floor, room.x, room.y, room.width, room.height);
             rooms.Add(room);
             z += layout.roomDepth;
+            if (i == layout.roomCount - 1)
+            {
+                if (layout.exitDepth > 0)
+                {
+                    exitRect = new RectInt(-layout.exitWidth / 2, z, layout.exitWidth, layout.exitDepth);
+                    AddRect(floor, exitRect.Value.x, exitRect.Value.y, exitRect.Value.width, exitRect.Value.height);
+                    z += layout.exitDepth;
+                    break;
+                }
+                if (!layout.endCorridor) break;
+            }
             AddRect(floor, -layout.corridorWidth / 2, z, layout.corridorWidth, layout.corridorLength); // 다음 복도 (마지막은 막다른 복도)
             z += layout.corridorLength;
         }
@@ -102,25 +134,40 @@ public static class DungeonChainBuilder
 
         // ---------- 3) 메시 생성 ----------
         var root = new GameObject("Floor1_Dungeon");
-        var floorGo = CreateMeshObject("Floor", root.transform, BuildFloorMesh(floor, CellCenter), material);
-        var wallGo = CreateMeshObject("Walls", root.transform, BuildWallMesh(floor, solid, CellCenter), material, GetOrCreateTopMaterial(material));
+        string meshPrefix = EditorSceneManager.GetActiveScene().name; // 씬마다 메시 에셋을 따로 둬서 다른 층 씬의 메시를 덮어쓰지 않게 한다
+        var floorGo = CreateMeshObject("Floor", root.transform, BuildFloorMesh(floor, CellCenter, meshPrefix), material);
+        floorGo.AddComponent<ThickFloorCollider>();
+        var wallGo = CreateMeshObject("Walls", root.transform, BuildWallMesh(floor, solid, CellCenter, meshPrefix), material, GetOrCreateTopMaterial(material));
         log.AppendLine($"floor cells {floor.Count}, wall blocks {solid.Count}, length {totalDepth * Cell}m");
 
         // ---------- 4) RoomEncounter 재배치 ----------
         var encounterParent = new GameObject("RoomEncounters").transform;
         encounterParent.SetParent(root.transform);
+        var placedEncounters = new List<RoomEncounter>();
         for (int i = 0; i < rooms.Count; i++)
         {
             RoomEncounter enc = i < keptEncounters.Count ? keptEncounters[i] : new GameObject().AddComponent<RoomEncounter>();
+            placedEncounters.Add(enc);
             enc.gameObject.name = $"RoomEncounter_{i + 1}";
             enc.transform.SetParent(encounterParent, true);
             Vector2 roomCenter = new Vector2((rooms[i].x + rooms[i].width / 2f) * Cell, (rooms[i].y + rooms[i].height / 2f) * Cell + zOffset);
             enc.transform.position = new Vector3(roomCenter.x, 1f, roomCenter.y);
             var so = new SerializedObject(enc);
             so.FindProperty("roomSize").vector2Value = new Vector2(rooms[i].width * Cell - 2f, rooms[i].height * Cell - 2f); // 벽에서 1m 띄워 스폰
+            // 방 가운데까지 들어가야 발동하면 큰 방에서 너무 늦으니, 방 입구를 지나자마자 발동하게 한다
+            so.FindProperty("triggerDistance").floatValue = Mathf.Max(8f, rooms[i].height * Cell / 2f - 2f);
             so.ApplyModifiedPropertiesWithoutUndo();
         }
-        for (int i = rooms.Count; i < keptEncounters.Count; i++) Object.DestroyImmediate(keptEncounters[i].gameObject);
+        // 남는 RoomEncounter는 지우되 몬스터 수는 마지막 방에 합친다
+        for (int i = rooms.Count; i < keptEncounters.Count; i++)
+        {
+            var lastSo = new SerializedObject(keptEncounters[rooms.Count - 1]);
+            var extraSo = new SerializedObject(keptEncounters[i]);
+            foreach (var field in new[] { "meleeCount", "rangedCount" })
+                lastSo.FindProperty(field).intValue += extraSo.FindProperty(field).intValue;
+            lastSo.ApplyModifiedPropertiesWithoutUndo();
+            Object.DestroyImmediate(keptEncounters[i].gameObject);
+        }
         log.AppendLine($"room encounters placed: {rooms.Count} (reused {Mathf.Min(rooms.Count, keptEncounters.Count)})");
 
         // ---------- 5) 플레이어 시작 위치: 시작 복도 ----------
@@ -144,9 +191,78 @@ public static class DungeonChainBuilder
         AssetDatabase.CreateAsset(surface.navMeshData, dataPath);
         log.AppendLine("navmesh baked -> " + dataPath + " (verts " + UnityEngine.AI.NavMesh.CalculateTriangulation().vertices.Length + ")");
 
+        // ---------- 7) 전투 중 잠기는 문 (방 입구/출구). 내비메시를 굽고 난 뒤에 만들고 기본은 꺼둔다 ----------
+        Material gateMaterial = GetOrCreateGateMaterial();
+        for (int i = 0; i < rooms.Count; i++)
+        {
+            var gates = new List<GameObject>();
+            gates.Add(CreateGate($"Gate_Room{i + 1}_South", root.transform, rooms[i].y * Cell + zOffset, layout.corridorWidth * Cell, gateMaterial));
+            bool isLast = i == layout.roomCount - 1;
+            bool hasNorthCorridor = !isLast || layout.endCorridor || exitRect.HasValue;
+            if (hasNorthCorridor)
+            {
+                int openingCells = isLast && exitRect.HasValue ? layout.exitWidth : layout.corridorWidth;
+                gates.Add(CreateGate($"Gate_Room{i + 1}_North", root.transform, (rooms[i].y + rooms[i].height) * Cell + zOffset, openingCells * Cell, gateMaterial));
+            }
+
+            var gateSo = new SerializedObject(placedEncounters[i]);
+            var gateProp = gateSo.FindProperty("lockGates");
+            gateProp.arraySize = gates.Count;
+            for (int g = 0; g < gates.Count; g++) gateProp.GetArrayElementAtIndex(g).objectReferenceValue = gates[g];
+            gateSo.ApplyModifiedPropertiesWithoutUndo();
+        }
+        log.AppendLine("lock gates created for " + rooms.Count + " room(s)");
+
+        // ---------- 8) 다음 층 문: 출구 공간 안쪽 벽 앞으로 옮긴다 (문은 '모든 방 정리' 조건이 걸린 TowerEntrance) ----------
+        if (exitRect.HasValue)
+        {
+            float exitEndZ = (exitRect.Value.y + exitRect.Value.height) * Cell + zOffset;
+            TowerEntrance door = null;
+            foreach (var entrance in Object.FindObjectsByType<TowerEntrance>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (new SerializedObject(entrance).FindProperty("requireFloorCleared").boolValue) { door = entrance; break; }
+            }
+            if (door != null)
+            {
+                Vector3 p = door.transform.position;
+                door.transform.position = new Vector3(0f, p.y, exitEndZ - 1.5f);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(door.transform);
+                log.AppendLine("next-floor door moved to " + door.transform.position);
+            }
+            else
+            {
+                log.AppendLine($"exit space ready (center z={exitEndZ - exitRect.Value.height * Cell / 2f:0.0}) but no next-floor TowerEntrance (requireFloorCleared) found in the scene");
+            }
+        }
+
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         AssetDatabase.SaveAssets();
         return log.ToString();
+    }
+
+    // 복도가 방과 만나는 선(z)에 복도 폭만큼의 문을 세운다. 양옆 벽에 살짝 걸치게 폭을 조금 넓힌다.
+    private static GameObject CreateGate(string name, Transform parent, float z, float width, Material material)
+    {
+        var gate = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        gate.name = name;
+        gate.transform.SetParent(parent, false);
+        gate.transform.localPosition = new Vector3(0f, WallHeight / 2f, z);
+        gate.transform.localScale = new Vector3(width + 0.4f, WallHeight, 0.6f);
+        gate.GetComponent<MeshRenderer>().sharedMaterial = material;
+        gate.SetActive(false);
+        return gate;
+    }
+
+    private const string GateMaterialPath = "Assets/Materials/DungeonGate.mat";
+
+    private static Material GetOrCreateGateMaterial()
+    {
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(GateMaterialPath);
+        if (mat != null) return mat;
+        mat = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        mat.SetColor("_BaseColor", new Color(0.55f, 0.06f, 0.06f));
+        AssetDatabase.CreateAsset(mat, GateMaterialPath);
+        return mat;
     }
 
     private static void AddRect(HashSet<Vector2Int> cells, int x, int z, int w, int d)
@@ -168,7 +284,7 @@ public static class DungeonChainBuilder
     }
 
     // 바닥: 칸마다 위를 향한 사각형. UV는 월드 좌표 2m = 텍스처 1장.
-    private static Mesh BuildFloorMesh(HashSet<Vector2Int> floor, System.Func<Vector2Int, Vector3> center)
+    private static Mesh BuildFloorMesh(HashSet<Vector2Int> floor, System.Func<Vector2Int, Vector3> center, string meshPrefix)
     {
         var b = new MeshBuilder();
         float h = Cell / 2f;
@@ -177,11 +293,11 @@ public static class DungeonChainBuilder
             Vector3 p = center(c);
             b.Quad(p + new Vector3(-h, 0, -h), p + new Vector3(-h, 0, h), p + new Vector3(h, 0, h), p + new Vector3(h, 0, -h), Vector3.up, WorldUV.XZ);
         }
-        return b.ToMesh("DungeonFloor");
+        return b.ToMesh(meshPrefix + "_DungeonFloor");
     }
 
     // 벽: 벽 칸마다 덩어리. 윗면은 항상, 옆면은 이웃이 벽 덩어리가 아닐 때만 만든다(안쪽 면 생략).
-    private static Mesh BuildWallMesh(HashSet<Vector2Int> floor, HashSet<Vector2Int> solid, System.Func<Vector2Int, Vector3> center)
+    private static Mesh BuildWallMesh(HashSet<Vector2Int> floor, HashSet<Vector2Int> solid, System.Func<Vector2Int, Vector3> center, string meshPrefix)
     {
         var b = new MeshBuilder();
         float h = Cell / 2f;
@@ -202,7 +318,7 @@ public static class DungeonChainBuilder
                 b.Quad(a0, a0 + Vector3.up * WallHeight, a1 + Vector3.up * WallHeight, a1, n, d.x != 0 ? WorldUV.ZY : WorldUV.XY);
             }
         }
-        return b.ToMesh("DungeonWalls");
+        return b.ToMesh(meshPrefix + "_DungeonWalls");
     }
 
     private enum WorldUV { XZ, XY, ZY }

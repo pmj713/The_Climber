@@ -19,14 +19,30 @@ public class WeaponPedestal : MonoBehaviour
 
     private Vector3 InteractionPosition => interactionCenter != null ? interactionCenter.position : transform.position;
     private bool playerInRange;
+    private System.Type weaponToEquipType;
 
     private void Start()
     {
+        if (weaponToEquip != null) weaponToEquipType = weaponToEquip.GetType();
         if (hintText != null) hintText.gameObject.SetActive(false);
+    }
+
+    private void OnDisable()
+    {
+        PlayerInteraction.SetAvailable(this, false, interactKey);
+    }
+
+    // 마을을 다시 불러오면 씬에 들어 있던 플레이어 사본이 중복으로 파괴되어 참조가 비므로, 살아 있는 본체에서 다시 찾는다
+    private void ResolveReferences()
+    {
+        if (weaponController == null) weaponController = FindAnyObjectByType<WeaponController>();
+        if (weaponToEquip == null && weaponController != null && weaponToEquipType != null)
+            weaponToEquip = weaponController.GetComponent(weaponToEquipType) as MonoBehaviour;
     }
 
     private void Update()
     {
+        ResolveReferences();
         if (weaponController == null) return;
 
         bool inRange = Vector3.Distance(InteractionPosition, weaponController.transform.position) <= interactDistance;
@@ -35,6 +51,8 @@ public class WeaponPedestal : MonoBehaviour
             playerInRange = inRange;
             if (hintText != null) hintText.gameObject.SetActive(inRange);
         }
+
+        PlayerInteraction.SetAvailable(this, playerInRange && weaponToEquip != null, interactKey);
 
         // 일시정지/설정 등으로 게임이 멈춰있을 때는 상호작용 키 입력을 받지 않는다.
         if (Time.timeScale == 0f) return;

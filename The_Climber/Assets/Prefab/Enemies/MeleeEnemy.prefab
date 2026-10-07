@@ -986,7 +986,6 @@ MonoBehaviour:
   maxHealth: 30
   hitStunDuration: 0.3
   expReward: 100
-  goldReward: 5
   deathEffectPrefab: {fileID: 7705893600770560649, guid: 0081e88898daf194a9c86c7c33265202, type: 3}
   deathEffectScale: 1
   deathEffectLifetime: 3
@@ -1024,8 +1023,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7009e43d8c27d149be75928b1b2cc66, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MeleeEnemyAI
-  detectRange: 8
-  attackRange: 1.5
+  detectRange: 15
+  lungeTriggerRange: 3.5
+  lungeDistance: 3
+  lungeDuration: 0.25
+  contactRadius: 1
   moveSpeed: 3.5
   attackPrepareTime: 0.5
   attackCooldown: 1
@@ -1035,7 +1037,6 @@ MonoBehaviour:
     m_Bits: 64
   animator: {fileID: 4950582218746349165}
   weaponHitbox: {fileID: 4958070420827933577}
-  weaponActiveDuration: 0.3
   attackWarningPrefab: {fileID: 1568598406263911555, guid: e56128a94f5ed044e9b7aace74124b9b, type: 3}
 --- !u!114 &6600241082358305262
 MonoBehaviour:

@@ -7,7 +7,7 @@ using UnityEngine.AI;
 // 고유 패턴을 쓴다. NC AI-기획 요약 페이지의 "엘리트 몬스터 패턴 (4층)" 표를 기준으로 구현.
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(EnemyHealth))]
-public class EliteOrcWarriorAI : MonoBehaviour, IEnemyEmpowerable
+public class EliteOrcWarriorAI : MonoBehaviour, IEnemyEmpowerable, IEnemyDetectionConfigurable, IEnemyPhasing
 {
     private enum State { Idle, Chase, AttackPrepare, Busy, Cooldown }
 
@@ -86,8 +86,21 @@ public class EliteOrcWarriorAI : MonoBehaviour, IEnemyEmpowerable
     // 패턴 도중 사망하면 코루틴이 끊기므로, 예고/지속 이펙트를 모아뒀다가 HandleDeath에서 한 번에 지운다.
     private readonly List<GameObject> patternEffects = new List<GameObject>();
 
+    private Collider[] ownColliders;
+    private bool phasing;
+
+    public bool IsPhasingThroughPlayer => phasing;
+
+    // 돌진하는 동안은 플레이어와 서로 밀지 않고 통과한다
+    private void SetPhasing(bool value)
+    {
+        phasing = value;
+        EnemyPlayerPhasing.Apply(ownColliders, value);
+    }
+
     private void Awake()
     {
+        ownColliders = GetComponentsInChildren<Collider>(true);
         agent = GetComponent<NavMeshAgent>();
         health = GetComponent<EnemyHealth>();
         status = GetComponent<EnemyStatusEffects>();
@@ -358,6 +371,7 @@ public class EliteOrcWarriorAI : MonoBehaviour, IEnemyEmpowerable
         float traveled = 0f;
         bool hitWall = false;
 
+        SetPhasing(true);
         while (traveled < chargeMaxDistance)
         {
             float step = chargeSpeed * Time.deltaTime;
@@ -383,6 +397,7 @@ public class EliteOrcWarriorAI : MonoBehaviour, IEnemyEmpowerable
             yield return null;
         }
 
+        SetPhasing(false);
         ReleaseTrail(trail);
         if (hitWall) SpawnScaledEffect(chargeImpactPrefab, transform.position + direction * 0.8f + Vector3.up * 1.1f, 1f);
 
@@ -555,6 +570,7 @@ public class EliteOrcWarriorAI : MonoBehaviour, IEnemyEmpowerable
     {
         interruptedByFreeze = true;
         StopAllCoroutines();
+        SetPhasing(false);
         ClearPatternEffects();
         if (weaponHitbox != null) weaponHitbox.Deactivate();
 
@@ -601,6 +617,11 @@ public class EliteOrcWarriorAI : MonoBehaviour, IEnemyEmpowerable
     {
         damage = Mathf.Max(1, Mathf.RoundToInt(damage * multiplier));
         chargeDamage = Mathf.Max(1, Mathf.RoundToInt(chargeDamage * multiplier));
+    }
+
+    public void SetDetectRange(float range)
+    {
+        detectRange = range;
     }
 
     private void OnDrawGizmosSelected()

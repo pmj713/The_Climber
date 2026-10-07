@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 // PlayerActiveSkillSlots에 장착된 스킬을 실제로 발동시킨다 (0: 우클릭, 1: E, 2: Q).
 // 모든 액티브 스킬은 1회 한정 획득이라 CountAcquired는 항상 0/1이다. 따라서 위력은
@@ -97,7 +98,9 @@ public class ActiveSkillCaster : MonoBehaviour
     {
         for (int i = 0; i < SlotActions.Length; i++)
         {
-            if (Input.GetKeyDown(KeyBindingManager.GetKey(SlotActions[i])))
+            KeyCode key = KeyBindingManager.GetKey(SlotActions[i]);
+            // 문/제단/무기 받침대 앞에서 누른 상호작용 키로는 스킬이 나가지 않는다
+            if (Input.GetKeyDown(key) && !PlayerInteraction.IsKeyReserved(key))
             {
                 TryCast(i);
             }
@@ -258,16 +261,19 @@ public class ActiveSkillCaster : MonoBehaviour
             ? SpawnScaledEffect(arrowRainAreaPrefab, targetPoint + Vector3.up * 0.05f, Quaternion.identity, radius, tint, 0f)
             : CreateRangeRingIndicator(targetPoint, radius);
 
+        // 화살비는 씬에 놓이는 효과라, 층 이동 등으로 씬이 바뀌면 거기서 끝낸다
+        Scene startScene = SceneManager.GetActiveScene();
+
         if (arrowRainArrowPrefab != null)
         {
             // 예고 시간부터 지속시간이 끝날 때까지, 화살이 끊이지 않고 계속 떨어지는 연출을 유지한다.
-            StartCoroutine(ArrowRainVisualLoop(targetPoint, radius, arrowRainWarmup + duration, tint));
+            StartCoroutine(ArrowRainVisualLoop(targetPoint, radius, arrowRainWarmup + duration, tint, startScene));
         }
 
         yield return new WaitForSeconds(arrowRainWarmup);
 
         float elapsed = 0f;
-        while (elapsed < duration)
+        while (elapsed < duration && SceneManager.GetActiveScene() == startScene)
         {
             Collider[] hits = Physics.OverlapSphere(targetPoint, radius, enemyMask);
             foreach (Collider hit in hits) DealDamage(hit, tickDamage, element);
@@ -280,13 +286,13 @@ public class ActiveSkillCaster : MonoBehaviour
     }
 
     // 화살비 지속시간 내내 화살이 끊기지 않고 계속 떨어지도록 일정 간격으로 계속 스폰한다.
-    private IEnumerator ArrowRainVisualLoop(Vector3 targetPoint, float radius, float totalDuration, Color tint)
+    private IEnumerator ArrowRainVisualLoop(Vector3 targetPoint, float radius, float totalDuration, Color tint, Scene startScene)
     {
         const float spawnInterval = 0.15f;
         int arrowsPerBurst = Mathf.Max(1, Mathf.RoundToInt(radius * arrowRainArrowsPerRadius * spawnInterval));
 
         float elapsed = 0f;
-        while (elapsed < totalDuration)
+        while (elapsed < totalDuration && SceneManager.GetActiveScene() == startScene)
         {
             for (int i = 0; i < arrowsPerBurst; i++)
             {
@@ -346,11 +352,13 @@ public class ActiveSkillCaster : MonoBehaviour
         float traveled = 0f;
         while (traveled < arrowRainArrowSpawnHeight)
         {
+            if (arrow == null) yield break; // 떨어지는 도중 씬이 바뀌면 화살이 먼저 지워진다
             traveled += fallSpeed * Time.deltaTime;
             arrow.transform.position = Vector3.Lerp(startPos, landingPoint, Mathf.Clamp01(traveled / arrowRainArrowSpawnHeight));
             yield return null;
         }
 
+        if (arrow == null) yield break;
         arrow.transform.position = landingPoint;
         if (arrowRainImpactPrefab != null) EffectTint.Spawn(arrowRainImpactPrefab, landingPoint, Quaternion.identity, tint, 1f);
         yield return new WaitForSeconds(0.4f);

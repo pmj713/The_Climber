@@ -4,7 +4,7 @@ using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(EnemyHealth))]
-public class RangedEnemyAI : MonoBehaviour, IEnemyEmpowerable
+public class RangedEnemyAI : MonoBehaviour, IEnemyEmpowerable, IEnemyDetectionConfigurable
 {
     // 근접 몬스터와 동일한 상태 흐름이지만 Attack에서 직접 타격 대신 투사체를 발사한다.
     private enum State { Idle, Chase, AttackPrepare, Attack, Cooldown }
@@ -258,6 +258,11 @@ public class RangedEnemyAI : MonoBehaviour, IEnemyEmpowerable
     public void ApplyDamageMultiplier(float multiplier)
     {
         damage = Mathf.Max(1, Mathf.RoundToInt(damage * multiplier));
+    }
+
+    public void SetDetectRange(float range)
+    {
+        detectRange = range;
     }
 
     private void OnDrawGizmosSelected()

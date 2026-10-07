@@ -10,7 +10,6 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float rotationSpeed = 15f;
     [SerializeField] private Camera mainCamera;
     [SerializeField] private Animator animator;
-    [SerializeField] private float runAnimationYawOffset = -80f;
 
     [SerializeField] private float dodgeDistance = 4f;
     [SerializeField] private float dodgeDuration = 0.2f;
@@ -20,7 +19,6 @@ public class PlayerMovement : MonoBehaviour
     private static readonly int IsMovingHash = Animator.StringToHash("IsMoving");
 
     private CharacterController controller;
-    private Transform modelTransform;
     private Vector3 moveInput;
     private Vector3 aimPoint;
     private float verticalVelocity;
@@ -32,6 +30,23 @@ public class PlayerMovement : MonoBehaviour
     private float effectiveMoveSpeed;
 
     public bool IsInvulnerable { get; private set; }
+    public bool IsDodging => isDodging;
+
+    // 회피나 몬스터 돌진처럼 서로 몸이 통과해야 할 때 플레이어와 대상 콜라이더의 물리 충돌을 켜고 끈다
+    public void IgnoreCollisionWith(Collider other, bool ignore)
+    {
+        if (other != null) Physics.IgnoreCollision(controller, other, ignore);
+    }
+
+    private void SetCollisionWithEnemies(bool ignore)
+    {
+        foreach (EnemyHealth enemy in FindObjectsByType<EnemyHealth>(FindObjectsSortMode.None))
+        {
+            // 회피가 끝나도 돌진 중인 몬스터와는 계속 통과 상태를 유지한다
+            if (!ignore && enemy.TryGetComponent<IEnemyPhasing>(out var phasing) && phasing.IsPhasingThroughPlayer) continue;
+            foreach (Collider c in enemy.GetComponentsInChildren<Collider>(true)) IgnoreCollisionWith(c, ignore);
+        }
+    }
     public Vector3 MoveDirection => moveInput;
 
     public float GetDodgeCooldownRemaining()
@@ -43,11 +58,11 @@ public class PlayerMovement : MonoBehaviour
 
     private void Awake()
     {
-        Instance = this;
+        // 마을을 다시 불러올 때 씬에 들어 있는 사본은 중복으로 파괴되므로, 이미 살아 있는 본체의 싱글톤을 덮어쓰지 않는다
+        if (Instance == null || Instance == this) Instance = this;
         controller = GetComponent<CharacterController>();
         if (mainCamera == null) mainCamera = Camera.main;
         if (animator == null) animator = GetComponentInChildren<Animator>();
-        if (animator != null) modelTransform = animator.transform;
         effectiveMoveSpeed = moveSpeed;
     }
 
@@ -165,12 +180,6 @@ public class PlayerMovement : MonoBehaviour
         bool moving = Time.time >= attackRootEndTime
             && (isDodging || moveInput.sqrMagnitude > 0.0001f);
         animator.SetBool(IsMovingHash, moving);
-
-        // 달리기 클립의 진행 방향이 모델 정면과 어긋나 있어서, 재생 중에는 모델만 보정 회전을 적용한다
-        if (modelTransform != null)
-        {
-            modelTransform.localRotation = moving ? Quaternion.Euler(0f, runAnimationYawOffset, 0f) : Quaternion.identity;
-        }
     }
 
     private void ApplyGravity()
@@ -220,6 +229,7 @@ public class PlayerMovement : MonoBehaviour
         lastDodgeTime = Time.time;
         isDodging = true;
         IsInvulnerable = true;
+        SetCollisionWithEnemies(true);
 
         // 이동 입력이 있으면 그 방향으로, 없으면 바라보는 방향으로 회피
         Vector3 direction = moveInput.sqrMagnitude > 0.01f
@@ -237,6 +247,7 @@ public class PlayerMovement : MonoBehaviour
         }
 
         isDodging = false;
+        SetCollisionWithEnemies(false);
 
         float remainingInvuln = invulnerabilityDuration - dodgeDuration;
         if (remainingInvuln > 0f) yield return new WaitForSeconds(remainingInvuln);

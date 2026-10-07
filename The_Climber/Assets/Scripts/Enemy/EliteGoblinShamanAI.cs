@@ -7,7 +7,7 @@ using UnityEngine.AI;
 // "엘리트 몬스터 패턴 (4층)" 표를 기준으로 구현.
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(EnemyHealth))]
-public class EliteGoblinShamanAI : MonoBehaviour, IEnemyEmpowerable
+public class EliteGoblinShamanAI : MonoBehaviour, IEnemyEmpowerable, IEnemyDetectionConfigurable
 {
     private enum State { Idle, Chase, AttackPrepare, Busy, Cooldown }
 
@@ -473,6 +473,11 @@ public class EliteGoblinShamanAI : MonoBehaviour, IEnemyEmpowerable
     {
         damage = Mathf.Max(1, Mathf.RoundToInt(damage * multiplier));
         groundZoneDamage = Mathf.Max(1, Mathf.RoundToInt(groundZoneDamage * multiplier));
+    }
+
+    public void SetDetectRange(float range)
+    {
+        detectRange = range;
     }
 
     private void OnDrawGizmosSelected()

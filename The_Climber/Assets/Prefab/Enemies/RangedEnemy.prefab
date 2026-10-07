@@ -267,7 +267,6 @@ MonoBehaviour:
   maxHealth: 30
   hitStunDuration: 0.3
   expReward: 100
-  goldReward: 5
   deathEffectPrefab: {fileID: 7705893600770560649, guid: 0081e88898daf194a9c86c7c33265202, type: 3}
   deathEffectScale: 1
   deathEffectLifetime: 3
@@ -305,8 +304,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 725ea4c59bfff254daaa04a54561ebe6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RangedEnemyAI
-  detectRange: 8
-  attackRange: 6
+  detectRange: 15
+  attackRange: 10
   moveSpeed: 3
   attackPrepareTime: 0.6
   attackCooldown: 1.5

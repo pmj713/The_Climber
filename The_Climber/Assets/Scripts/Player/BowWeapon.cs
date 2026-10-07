@@ -5,7 +5,6 @@ public class BowWeapon : MonoBehaviour, IWeapon
     [SerializeField] private Projectile projectilePrefab;
     [SerializeField] private float projectileSpeed = 15f;
     [SerializeField] private int damage = 8;
-    [SerializeField] private float multiShotSpreadAngle = 10f;
     [SerializeField] private float powerDamagePerLevel = 0.15f;
     [Tooltip("화살을 놓는 순간 활 앞에서 터지는 이펙트 (선택)")]
     [SerializeField] private GameObject releaseEffectPrefab;
@@ -32,18 +31,12 @@ public class BowWeapon : MonoBehaviour, IWeapon
         int powerStacks = (basicAttackLevel + 1) / 2;
         int finalDamage = Mathf.RoundToInt(effectiveDamage * (1f + powerDamagePerLevel * powerStacks));
 
-        int projectileLevel = GetLevel(KeywordType.Projectile);
-        int projectileCount = 1 + projectileLevel;
-        int pierceCount = projectileLevel;
+        // 투사체 키워드의 개수 증가와 관통은 검기/부채살에만 적용된다. 일반공격은 항상 한 발만 나가고 관통하지 않는다.
         ElementType element = ResolveElement();
         EffectTint.Spawn(releaseEffectPrefab, origin, Quaternion.LookRotation(direction), EffectTint.ForElement(element), 1f);
 
-        for (int i = 0; i < projectileCount; i++)
-        {
-            Vector3 shotDirection = ApplySpread(direction, i, projectileCount);
-            Projectile projectile = Instantiate(projectilePrefab, origin, Quaternion.LookRotation(shotDirection));
-            projectile.Launch(shotDirection, projectileSpeed, finalDamage, pierceCount, element, 1);
-        }
+        Projectile projectile = Instantiate(projectilePrefab, origin, Quaternion.LookRotation(direction));
+        projectile.Launch(direction, projectileSpeed, finalDamage, 0, element, 1);
     }
 
     private ElementType ResolveElement()
@@ -57,15 +50,5 @@ public class BowWeapon : MonoBehaviour, IWeapon
     private int GetLevel(KeywordType keyword)
     {
         return skillManager != null ? skillManager.GetKeywordLevel(keyword) : 0;
-    }
-
-    private Vector3 ApplySpread(Vector3 direction, int index, int count)
-    {
-        if (count <= 1) return direction;
-
-        // 여러 발일 때는 조준 방향을 중심으로 부채꼴로 퍼뜨려서 발사
-        float totalSpread = multiShotSpreadAngle * (count - 1);
-        float angle = -totalSpread / 2f + multiShotSpreadAngle * index;
-        return Quaternion.Euler(0f, angle, 0f) * direction;
     }
 }

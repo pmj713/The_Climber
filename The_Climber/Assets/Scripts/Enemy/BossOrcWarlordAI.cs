@@ -7,7 +7,7 @@ using UnityEngine.AI;
 // 돌진 베기(상시) / 광역 강타(75% 이하) / 투척 난사(50% 이하) / 졸개 소환(75·50·25% 진입 1회씩) / 분노 연계(25% 이하 전용).
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(EnemyHealth))]
-public class BossOrcWarlordAI : MonoBehaviour, IEnemyEmpowerable
+public class BossOrcWarlordAI : MonoBehaviour, IEnemyEmpowerable, IEnemyDetectionConfigurable, IEnemyPhasing
 {
     private enum State { Idle, Chase, AttackPrepare, Busy, Cooldown }
 
@@ -123,8 +123,21 @@ public class BossOrcWarlordAI : MonoBehaviour, IEnemyEmpowerable
     private readonly List<GameObject> patternEffects = new List<GameObject>();
     private bool interruptedByFreeze;
 
+    private Collider[] ownColliders;
+    private bool phasing;
+
+    public bool IsPhasingThroughPlayer => phasing;
+
+    // 돌진하는 동안은 플레이어와 서로 밀지 않고 통과한다
+    private void SetPhasing(bool value)
+    {
+        phasing = value;
+        EnemyPlayerPhasing.Apply(ownColliders, value);
+    }
+
     private void Awake()
     {
+        ownColliders = GetComponentsInChildren<Collider>(true);
         agent = GetComponent<NavMeshAgent>();
         health = GetComponent<EnemyHealth>();
         status = GetComponent<EnemyStatusEffects>();
@@ -379,6 +392,7 @@ public class BossOrcWarlordAI : MonoBehaviour, IEnemyEmpowerable
         float traveled = 0f;
         bool hitWall = false;
 
+        SetPhasing(true);
         while (traveled < chargeSlashMaxDistance)
         {
             float step = chargeSlashSpeed * Time.deltaTime;
@@ -405,6 +419,7 @@ public class BossOrcWarlordAI : MonoBehaviour, IEnemyEmpowerable
             yield return null;
         }
 
+        SetPhasing(false);
         ReleaseTrail(trail);
         if (hitWall) SpawnScaledEffect(chargeSlashImpactPrefab, transform.position + direction * chargeSlashHitRadius + Vector3.up * 2f, 1.8f);
 
@@ -720,6 +735,7 @@ public class BossOrcWarlordAI : MonoBehaviour, IEnemyEmpowerable
     {
         interruptedByFreeze = true;
         StopAllCoroutines();
+        SetPhasing(false);
         ClearPatternEffects();
         if (weaponHitbox != null) weaponHitbox.Deactivate();
         health.IncomingDamageMultiplier = 1f;
@@ -762,6 +778,11 @@ public class BossOrcWarlordAI : MonoBehaviour, IEnemyEmpowerable
         chargeSlashDamage = Mathf.Max(1, Mathf.RoundToInt(chargeSlashDamage * multiplier));
         aoeSlamDamage = Mathf.Max(1, Mathf.RoundToInt(aoeSlamDamage * multiplier));
         throwBarrageDamage = Mathf.Max(1, Mathf.RoundToInt(throwBarrageDamage * multiplier));
+    }
+
+    public void SetDetectRange(float range)
+    {
+        detectRange = range;
     }
 
     private void OnDrawGizmosSelected()

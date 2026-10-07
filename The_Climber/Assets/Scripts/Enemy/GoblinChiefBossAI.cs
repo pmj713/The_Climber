@@ -8,7 +8,7 @@ using UnityEngine.AI;
 // 25% 이하에서는 돌진 베기 -> 광역 강타를 예고 없이 즉시 연계하는 분노 연계를 쓴다.
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(EnemyHealth))]
-public class GoblinChiefBossAI : MonoBehaviour, IEnemyEmpowerable
+public class GoblinChiefBossAI : MonoBehaviour, IEnemyEmpowerable, IEnemyDetectionConfigurable, IEnemyPhasing
 {
     private enum State { Idle, Chase, Busy }
 
@@ -78,8 +78,21 @@ public class GoblinChiefBossAI : MonoBehaviour, IEnemyEmpowerable
     private float nextRageComboTime;
     private bool[] summonUsed;
 
+    private Collider[] ownColliders;
+    private bool phasing;
+
+    public bool IsPhasingThroughPlayer => phasing;
+
+    // 돌진하는 동안은 플레이어와 서로 밀지 않고 통과한다
+    private void SetPhasing(bool value)
+    {
+        phasing = value;
+        EnemyPlayerPhasing.Apply(ownColliders, value);
+    }
+
     private void Awake()
     {
+        ownColliders = GetComponentsInChildren<Collider>(true);
         agent = GetComponent<NavMeshAgent>();
         health = GetComponent<EnemyHealth>();
         status = GetComponent<EnemyStatusEffects>();
@@ -238,6 +251,7 @@ public class GoblinChiefBossAI : MonoBehaviour, IEnemyEmpowerable
 
         var alreadyHit = new HashSet<IDamageable>();
         float traveled = 0f;
+        SetPhasing(true);
         while (traveled < dashMaxDistance)
         {
             float step = dashSpeed * Time.deltaTime;
@@ -264,6 +278,7 @@ public class GoblinChiefBossAI : MonoBehaviour, IEnemyEmpowerable
 
             yield return null;
         }
+        SetPhasing(false);
     }
 
     // ---------------- 광역 강타 ----------------
@@ -486,6 +501,11 @@ public class GoblinChiefBossAI : MonoBehaviour, IEnemyEmpowerable
         dashDamage = Mathf.Max(1, Mathf.RoundToInt(dashDamage * multiplier));
         slamDamage = Mathf.Max(1, Mathf.RoundToInt(slamDamage * multiplier));
         barrageDamage = Mathf.Max(1, Mathf.RoundToInt(barrageDamage * multiplier));
+    }
+
+    public void SetDetectRange(float range)
+    {
+        detectRange = range;
     }
 
     private void OnDrawGizmosSelected()

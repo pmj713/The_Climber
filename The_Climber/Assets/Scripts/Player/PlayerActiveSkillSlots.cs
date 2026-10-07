@@ -15,7 +15,8 @@ public class PlayerActiveSkillSlots : MonoBehaviour
 
     private void Awake()
     {
-        Instance = this;
+        // 마을을 다시 불러올 때 씬에 들어 있는 사본은 중복으로 파괴되므로, 이미 살아 있는 본체의 싱글톤을 덮어쓰지 않는다
+        if (Instance == null || Instance == this) Instance = this;
     }
 
     // 새 런을 시작할 때(탑 입장) 호출. 이전 런에서 장착했던 액티브 스킬을 비운다.

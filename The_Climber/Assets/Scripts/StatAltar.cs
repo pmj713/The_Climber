@@ -25,8 +25,17 @@ public class StatAltar : MonoBehaviour
         if (hintText != null) hintText.gameObject.SetActive(false);
     }
 
+    private void OnDisable()
+    {
+        PlayerInteraction.SetAvailable(this, false, interactKey);
+    }
+
     private void Update()
     {
+        // 마을을 다시 불러오면 씬에 들어 있던 HUD/플레이어 사본이 중복으로 파괴되어 참조가 비므로, 살아 있는 본체에서 다시 찾는다
+        if (townController == null) townController = FindAnyObjectByType<TownController>();
+        if (player == null && PlayerHealth.Instance != null) player = PlayerHealth.Instance.transform;
+
         if (player == null) return;
 
         bool inRange = Vector3.Distance(transform.position, player.position) <= interactDistance;
@@ -35,6 +44,8 @@ public class StatAltar : MonoBehaviour
             playerInRange = inRange;
             if (hintText != null) hintText.gameObject.SetActive(inRange);
         }
+
+        PlayerInteraction.SetAvailable(this, playerInRange && townController != null, interactKey);
 
         // 일시정지/설정 등으로 게임이 멈춰있을 때는 상호작용 키 입력을 받지 않는다.
         if (Time.timeScale == 0f) return;
